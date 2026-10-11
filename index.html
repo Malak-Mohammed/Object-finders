@@ -138,7 +138,7 @@
                 }
             }
 
-            // 3. Give the phone 1.5 seconds to settle its compass readings before locking positions
+            // 3. Calibrate room sensors
             setupBtn.innerText = "Calibrating Room...";
             setTimeout(() => {
                 document.getElementById('setupScreen').style.display = 'none';
@@ -160,15 +160,15 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Scattered 360-degree coordinates around the room (Front, Sides, Back)
+            // All 7 scattered 360-degree coordinates around the room
             const roomPositions = [
-                { x: 0,   y: 0.2,  z: -3.5 }, // Front
-                { x: 3.2, y: -0.1, z: -2.0 }, // Right
-                { x: -3.2,y: 0.4,  z: -2.0 }, // Left
-                { x: 0,   y: 0.2,  z: 3.5  }, // Back (Behind student)
-                { x: 2.8, y: -0.4, z: 2.2  }, // Back Right
-                { x: -2.8,y: 1.2,  z: 2.2  }, // Back Left
-                { x: 0,   y: 2.0,  z: -2.5 }  // High Up Front
+                { x: 0,   y: 0.2,  z: -3.5 }, // 1: Front
+                { x: 3.2, y: -0.1, z: -2.0 }, // 2: Right
+                { x: -3.2,y: 0.4,  z: -2.0 }, // 3: Left
+                { x: 0,   y: 0.2,  z: 3.5  }, // 4: Back (Behind student)
+                { x: 2.8, y: -0.4, z: 2.2  }, // 5: Back Right
+                { x: -2.8,y: 1.2,  z: 2.2  }, // 6: Back Left
+                { x: 0,   y: 2.0,  z: -2.5 }  // 7: High Up Front
             ];
 
             roomPositions.forEach((pos, index) => {
