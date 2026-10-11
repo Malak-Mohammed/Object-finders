@@ -29,6 +29,7 @@
             width: 100vw;
             height: 100vh;
             z-index: 1;
+            pointer-events: none; /* Let touches pass through canvas to window listener or handle via webgl */
         }
         
         #cameraStream {
@@ -112,9 +113,18 @@
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         
-        let targetQuaternion = new THREE.Quaternion();
-        let baseQuaternion = new THREE.Quaternion();
-        let hasBase = false;
+        // Orientation variables
+        let screenOrientation = 0;
+        let deviceEuler = new THREE.Euler();
+        let deviceQuaternion = new THREE.Quaternion();
+        const zee = new THREE.Vector3(0, 0, 1);
+        const cameraQuaternion = new THREE.Quaternion();
+
+        // Fix rotations to align world orientation
+        const targetQuaternion = new THREE.Quaternion();
+        const q0 = new THREE.Quaternion(); // initial calibration offset
+        const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -90 deg rotation around X-axis for portrait/landscape alignment
+        let isCalibrated = false;
 
         async function startExperience() {
             const setupBtn = document.getElementById('setupBtn');
@@ -149,7 +159,7 @@
             setTimeout(() => {
                 document.getElementById('setupScreen').style.display = 'none';
                 initThreeScene();
-            }, 1500);
+            }, 1000);
         }
 
         function initThreeScene() {
@@ -187,7 +197,7 @@
             // Load Correct Fours
             correctPositions.forEach((pos, index) => {
                 textureLoader.load(pos.file, (texture) => {
-                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending });
+                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
                     const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
                     mesh.position.set(pos.x, pos.y, pos.z);
@@ -202,7 +212,7 @@
             // Load Wrong Numbers
             wrongPositions.forEach((pos, index) => {
                 textureLoader.load(pos.file, (texture) => {
-                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending });
+                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
                     const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
                     mesh.position.set(pos.x, pos.y, pos.z);
@@ -224,43 +234,12 @@
                 interactiveObjects.push(mesh);
             }
 
-            // Proper Quaternion DeviceOrientation handling for Landscape Mode
-            const zee = new THREE.Vector3(0, 0, 1);
-            const europaQuaternion = new THREE.Quaternion();
-            const orientQuaternion = new THREE.Quaternion();
-
-            window.addEventListener('deviceorientation', (event) => {
-                if (event.alpha === null) return;
-
-                const alpha = THREE.MathUtils.degToRad(event.alpha || 0);
-                const beta  = THREE.MathUtils.degToRad(event.beta || 0);
-                const gamma = THREE.MathUtils.degToRad(event.gamma || 0);
-                const orient = THREE.MathUtils.degToRad(window.orientation || 0);
-
-                // Convert device angles to Three.js orientation quaternion
-                const cX = Math.cos(beta / 2),  sX = Math.sin(beta / 2);
-                const cY = Math.cos(gamma / 2), sY = Math.sin(gamma / 2);
-                const cZ = Math.cos(alpha / 2), sZ = Math.sin(alpha / 2);
-
-                europaQuaternion.set(
-                    sX * cY * cZ - cX * sY * sZ,
-                    cX * sY * cZ + sX * cY * sZ,
-                    cX * cY * sZ + sX * sY * cZ,
-                    cX * cY * cZ - sX * sY * sZ
-                );
-
-                // Adjust for landscape orientation twist (-90 degrees around Z axis)
-                targetQuaternion.copy(europaQuaternion);
-                
-                // Set initial room lock on first valid reading
-                if (!hasBase) {
-                    baseQuaternion.copy(targetQuaternion).invert();
-                    hasBase = true;
-                }
-
-                // Apply relative room rotation
-                camera.quaternion.copy(baseQuaternion).multiply(targetQuaternion);
-            });
+            // Device Orientation Event Listeners
+            window.addEventListener('deviceorientation', onDeviceOrientationChangeEvent, false);
+            window.addEventListener('orientationchange', () => {
+                screenOrientation = window.orientation || 0;
+            }, false);
+            screenOrientation = window.orientation || 0;
 
             window.addEventListener('pointerdown', (event) => {
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -284,8 +263,40 @@
             animate();
         }
 
+        function onDeviceOrientationChangeEvent(event) {
+            const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0; // z
+            const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;   // x
+            const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0; // y
+            const orient = THREE.MathUtils.degToRad(screenOrientation || 0);     // screen orientation
+
+            // Standard Three.js / W3C orientation conversion formula
+            deviceEuler.set(beta, alpha, -gamma, 'YXZ');
+            deviceQuaternion.setFromEuler(deviceEuler);
+            deviceQuaternion.multiply(q1); // camera axes adjustment
+            deviceQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(zee, -orient)); // screen rotation adjustment
+
+            if (!isCalibrated) {
+                // Lock current heading as center base view upon first motion event
+                q0.copy(deviceQuaternion).invert();
+                isCalibrated = true;
+            }
+
+            // Combine base offset with current sensor orientation
+            targetQuaternion.copy(q0).multiply(deviceQuaternion);
+        }
+
         function animate() {
             requestAnimationFrame(animate);
+
+            // Smoothly interpolate camera rotation to prevent jitter
+            camera.quaternion.slerp(targetQuaternion, 0.25);
+
+            // Make sure all billboarded numbers face the camera or stay fixed in place
+            interactiveObjects.forEach(obj => {
+                // If you want numbers to always face you like billboards, uncomment below:
+                // obj.quaternion.copy(camera.quaternion);
+            });
+
             renderer.render(scene, camera);
         }
 
