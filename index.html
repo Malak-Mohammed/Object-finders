@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Find the Hidden Fours</title>
+    <title>Room Explorer - Find the Hidden Fours</title>
     
-    <!-- Apple Web App configurations -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hidden Fours">
+    <meta name="apple-mobile-web-app-title" content="Room Explorer">
 
     <style>
         * {
@@ -33,31 +32,44 @@
             object-fit: cover;
             z-index: 1;
         }
-        /* Container for the 7 hidden numbers */
-        #gameArea {
+        /* AR World Container that moves with the phone */
+        #arWorld {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: 2;
-            pointer-events: none; /* Let clicks pass through empty spaces */
+            pointer-events: none;
+            transform-style: preserve-3d;
         }
-        /* Individual Number Style */
-        .hidden-four {
+        /* Individual AR Object Style */
+        .ar-object {
             position: absolute;
-            font-size: 70px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.25); /* Subtle hidden look */
-            mix-blend-mode: overlay; /* Blends naturally with camera textures */
-            pointer-events: auto; /* Allow clicking on the number itself */
+            width: 120px;
+            height: 120px;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
             cursor: pointer;
             user-select: none;
-            padding: 20px; /* Makes it easier for a student's finger to tap */
-            transition: transform 0.2s ease, opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease, transform 0.2s ease;
         }
-        .hidden-four:active {
-            transform: scale(1.2);
+        .ar-object img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: overlay; /* Blends the PNG naturally into the environment */
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
+        }
+        /* Fallback text if image doesn't load */
+        .ar-object .fallback-text {
+            font-size: 80px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.3);
+            mix-blend-mode: overlay;
         }
         
         /* "Good Job!" Popup Overlay */
@@ -83,22 +95,43 @@
             transform: translate(-50%, -50%) scale(1);
         }
 
-        /* Start Button */
+        /* Start Screen Overlay */
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        #startScreen h1 {
+            font-size: 26px;
+            margin-bottom: 15px;
+        }
+        #startScreen p {
+            font-size: 16px;
+            color: #ccc;
+            margin-bottom: 30px;
+            max-width: 300px;
+        }
         #startBtn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 16px 32px;
+            padding: 16px 36px;
             font-size: 18px;
             font-weight: bold;
-            background: #ffffff;
-            color: #000000;
+            background: #2ecc71;
+            color: #ffffff;
             border: none;
             border-radius: 30px;
-            z-index: 20;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
         }
     </style>
 </head>
@@ -107,109 +140,171 @@
     <!-- Camera Video Element -->
     <video id="cameraStream" autoplay playsinline muted></video>
 
-    <!-- Game Area with 7 Fours placed at fixed percentages -->
-    <div id="gameArea">
-        <!-- 1 -->
-        <div class="hidden-four" style="top: 15%; left: 10%;" onclick="foundFour(this)">4</div>
-        <!-- 2 -->
-        <div class="hidden-four" style="top: 25%; right: 15%;" onclick="foundFour(this)">4</div>
-        <!-- 3 -->
-        <div class="hidden-four" style="top: 50%; left: 20%;" onclick="foundFour(this)">4</div>
-        <!-- 4 -->
-        <div class="hidden-four" style="top: 45%; right: 25%;" onclick="foundFour(this)">4</div>
-        <!-- 5 -->
-        <div class="hidden-four" style="top: 75%; left: 12%;" onclick="foundFour(this)">4</div>
-        <!-- 6 -->
-        <div class="hidden-four" style="top: 70%; right: 15%;" onclick="foundFour(this)">4</div>
-        <!-- 7 -->
-        <div class="hidden-four" style="top: 88%; left: 45%;" onclick="foundFour(this)">4</div>
-    </div>
+    <!-- AR World Container holding the 7 scattered Fours -->
+    <div id="arWorld"></div>
 
     <!-- Good Job Popup -->
     <div id="feedbackPopup">🎉 Good Job!</div>
 
-    <!-- Start Button -->
-    <button id="startBtn" onclick="initCamera()">Tap to Start Exploration</button>
+    <!-- Start Screen (Required for iOS Motion Sensors & Camera permission) -->
+    <div id="startScreen">
+        <h1>🔍 Room Explorer</h1>
+        <p>Move your iPhone around the room to find and tap all 7 hidden Fours!</p>
+        <button id="startBtn" onclick="startApp()">Start Game</button>
+    </div>
 
     <script>
-        // Synthesize a smooth win chime sound using the browser's Web Audio API (No audio files needed!)
+        // 7 Scattered positions around the room (Yaw degrees [0-360] and Pitch degrees [-90 to 90])
+        const foursData = [
+            { id: 1, yaw: 0,   pitch: 10,  img: 'images/four1.png' },
+            { id: 2, yaw: 60,  pitch: -15, img: 'images/four2.png' },
+            { id: 3, yaw: 120, pitch: 20,  img: 'images/four3.png' },
+            { id: 4, yaw: 180, pitch: -5,  img: 'images/four4.png' },
+            { id: 5, yaw: 240, pitch: 15,  img: 'images/four5.png' },
+            { id: 6, yaw: 300, pitch: -20, img: 'images/four6.png' },
+            { id: 7, yaw: 90,  pitch: -30, img: 'images/four7.png' }
+        ];
+
+        let remainingFours = foursData.length;
+        let currentYaw = 0;
+        let currentPitch = 0;
+
+        // Generate the elements dynamically into the AR world
+        function initARObjects() {
+            const world = document.getElementById('arWorld');
+            foursData.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'ar-object';
+                div.id = 'four-' + item.id;
+                
+                // Try loading PNG image, fallback to text "4" if missing
+                div.innerHTML = `
+                    <img src="${item.img}" alt="4" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="fallback-text" style="display:none;">4</span>
+                `;
+                
+                div.onclick = () => foundFour(item.id);
+                world.appendChild(div);
+            });
+            updateObjectPositions();
+        }
+
+        // Update object screen coordinates based on phone rotation
+        function updateObjectPositions() {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            foursData.forEach(item => {
+                const el = document.getElementById('four-' + item.id);
+                if (!el || el.style.opacity === '0') return;
+
+                // Calculate angle difference from current phone direction
+                let angleDiff = item.yaw - currentYaw;
+                // Normalize angle to -180 to 180
+                while (angleDiff < -180) angleDiff += 360;
+                while (angleDiff > 180) angleDiff -= 360;
+
+                // Map yaw and pitch to screen X and Y coordinates
+                // 1 degree of rotation = roughly 10 pixels on screen
+                const x = (screenWidth / 2) + (angleDiff * 15);
+                const y = (screenHeight / 2) - ((item.pitch - currentPitch) * 15);
+
+                // Check if object is roughly in front of the camera view
+                if (Math.abs(angleDiff) < 70) {
+                    el.style.left = x + 'px';
+                    el.style.top = y + 'px';
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none'; // Hide if looking away
+                }
+            });
+        }
+
+        // Handle iOS orientation permissions & Camera start
+        async function startApp() {
+            // Request iOS 13+ Motion Sensor Permission
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if (permissionState !== 'granted') {
+                        alert("Motion permission is required to look around the room!");
+                    }
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+
+            // Start Camera
+            const videoElement = document.getElementById('cameraStream');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } }
+                });
+                videoElement.srcObject = stream;
+            } catch (e) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoElement.srcObject = fallbackStream;
+                } catch (err) {
+                    alert("Camera access denied or unavailable.");
+                }
+            }
+
+            // Hide start screen
+            document.getElementById('startScreen').style.display = 'none';
+
+            // Initialize AR objects and orientation tracking
+            initARObjects();
+
+            window.addEventListener('deviceorientation', (event) => {
+                // alpha is compass direction (yaw), beta is front-to-back tilt (pitch)
+                if (event.alpha !== null) currentYaw = event.alpha;
+                if (event.beta !== null) currentPitch = event.beta;
+                updateObjectPositions();
+            });
+        }
+
+        // Win sound chime effect
         function playWinSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Play a pleasant two-note chord (C major chime)
                 const playTone = (freq, startTime, duration) => {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
-                    
                     osc.type = 'sine';
                     osc.frequency.value = freq;
-                    
                     gain.gain.setValueAtTime(0.15, audioCtx.currentTime + startTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
-                    
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
-                    
                     osc.start(audioCtx.currentTime + startTime);
                     osc.stop(audioCtx.currentTime + startTime + duration);
                 };
-
-                playTone(523.25, 0.0, 0.2); // C5
-                playTone(659.25, 0.1, 0.2); // E5
-                playTone(783.99, 0.2, 0.4); // G5
-            } catch (e) {
-                console.log("Audio not supported or blocked", e);
-            }
+                playTone(523.25, 0.0, 0.2);
+                playTone(659.25, 0.1, 0.2);
+                playTone(783.99, 0.2, 0.4);
+            } catch (e) {}
         }
 
-        async function initCamera() {
-            const videoElement = document.getElementById('cameraStream');
-            const startButton = document.getElementById('startBtn');
-            
-            try {
-                const constraints = {
-                    video: { facingMode: { exact: "environment" } }
-                };
-                
-                let stream;
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (e) {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                }
-
-                videoElement.srcObject = stream;
-                startButton.style.display = 'none';
-            } catch (error) {
-                alert("Camera access denied or not supported on this browser: " + error);
-            }
-        }
-
-        let remainingFours = 7;
-
-        function foundFour(element) {
-            // Play win sound effect
+        function foundFour(id) {
             playWinSound();
 
-            // Hide the clicked four permanently
-            element.style.opacity = '0';
-            element.style.pointerEvents = 'none';
-            
-            // Show "Good Job!" popup
+            const el = document.getElementById('four-' + id);
+            if (el) {
+                el.style.opacity = '0';
+                el.style.pointerEvents = 'none';
+            }
+
             const popup = document.getElementById('feedbackPopup');
             popup.classList.add('show');
-            
             setTimeout(() => {
                 popup.classList.remove('show');
             }, 1200);
 
             remainingFours--;
-
-            // Optional: If all 7 are found, show a celebratory message
             if (remainingFours === 0) {
                 setTimeout(() => {
-                    popup.innerText = "🌟 Amazing! You found all 7!";
+                    popup.innerText = "🌟 Amazing! You explored the whole room and found all 7!";
                     popup.classList.add('show');
                 }, 1500);
             }
