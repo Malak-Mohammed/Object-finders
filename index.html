@@ -14,7 +14,15 @@
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        body, html { 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            background: #000; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            /* Force orientation hint for browsers */
+            orientation: landscape;
+        }
         
         #canvas-container {
             position: fixed;
@@ -51,10 +59,10 @@
             text-align: center;
             padding: 25px;
         }
-        #setupScreen h1 { font-size: 26px; margin-bottom: 12px; }
-        #setupScreen p { font-size: 16px; color: #ccc; margin-bottom: 25px; max-width: 320px; line-height: 1.4; }
+        #setupScreen h1 { font-size: 26px; margin-bottom: 10px; }
+        #setupScreen p { font-size: 15px; color: #ccc; margin-bottom: 20px; max-width: 400px; line-height: 1.4; }
         #setupBtn {
-            padding: 16px 36px;
+            padding: 14px 32px;
             font-size: 18px;
             font-weight: bold;
             background: #2ecc71;
@@ -67,13 +75,13 @@
 
         #feedbackPopup {
             position: fixed;
-            top: 20%;
+            top: 15%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.8);
             background: rgba(46, 204, 113, 0.95);
             color: white;
-            padding: 15px 30px;
-            font-size: 26px;
+            padding: 12px 28px;
+            font-size: 24px;
             font-weight: bold;
             border-radius: 50px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.4);
@@ -96,7 +104,7 @@
 
     <div id="setupScreen">
         <h1>⭐ Number 4 Scavenger Hunt</h1>
-        <p>Stand in the center of the room, point your phone forward, and tap below to start!</p>
+        <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to start!</p>
         <button id="setupBtn" onclick="startExperience()">Start Game</button>
     </div>
 
@@ -160,47 +168,65 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // All 7 scattered 360-degree coordinates around the room
-            const roomPositions = [
-                { x: 0,   y: 0.2,  z: -3.5 }, // 1: Front
-                { x: 3.2, y: -0.1, z: -2.0 }, // 2: Right
-                { x: -3.2,y: 0.4,  z: -2.0 }, // 3: Left
-                { x: 0,   y: 0.2,  z: 3.5  }, // 4: Back (Behind student)
-                { x: 2.8, y: -0.4, z: 2.2  }, // 5: Back Right
-                { x: -2.8,y: 1.2,  z: 2.2  }, // 6: Back Left
-                { x: 0,   y: 2.0,  z: -2.5 }  // 7: High Up Front
+            // 7 Correct Fours scattered around in landscape field of view
+            const correctPositions = [
+                { x: 0,   y: 0.1,  z: -3.5, file: 'images/four1.png' },
+                { x: 3.5, y: -0.2, z: -2.2, file: 'images/four2.png' },
+                { x: -3.5,y: 0.3,  z: -2.2, file: 'images/four3.png' },
+                { x: 0,   y: 0.1,  z: 3.5,  file: 'images/four4.png' },
+                { x: 3.0, y: -0.4, z: 2.2,  file: 'images/four5.png' },
+                { x: -3.0,y: 1.0,  z: 2.2,  file: 'images/four6.png' },
+                { x: 0,   y: 1.8,  z: -2.5, file: 'images/four7.png' }
             ];
 
-            roomPositions.forEach((pos, index) => {
-                const imagePath = `images/four${index + 1}.png`;
-                
-                textureLoader.load(imagePath, (texture) => {
-                    const material = new THREE.MeshBasicMaterial({ 
-                        map: texture, 
-                        transparent: true,
-                        blending: THREE.AdditiveBlending 
-                    });
-                    
+            // 3 Wrong / Distractor Numbers
+            const wrongPositions = [
+                { x: -1.8, y: -0.5, z: -3.0, file: 'images/wrong1.png' },
+                { x: 1.8,  y: 0.7,  z: -2.8, file: 'images/wrong2.png' },
+                { x: 0,    y: -1.0, z:  2.0, file: 'images/wrong3.png' }
+            ];
+
+            // Load Correct Fours
+            correctPositions.forEach((pos, index) => {
+                textureLoader.load(pos.file, (texture) => {
+                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending });
                     const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
-                    
                     mesh.position.set(pos.x, pos.y, pos.z);
-                    mesh.userData = { id: index + 1 };
-                    
+                    mesh.userData = { type: 'correct', id: index + 1 };
                     scene.add(mesh);
                     interactiveObjects.push(mesh);
                 }, undefined, (err) => {
-                    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
-                    const geometry = new THREE.PlaneGeometry(1.0, 1.0);
-                    const mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(pos.x, pos.y, pos.z);
-                    mesh.userData = { id: index + 1 };
-                    scene.add(mesh);
-                    interactiveObjects.push(mesh);
+                    createFallbackMesh(pos, 'correct');
                 });
             });
 
-            // Listen to device orientation to rotate view in 360 degrees
+            // Load Wrong Numbers
+            wrongPositions.forEach((pos, index) => {
+                textureLoader.load(pos.file, (texture) => {
+                    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending });
+                    const geometry = new THREE.PlaneGeometry(1.0, 1.0);
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(pos.x, pos.y, pos.z);
+                    mesh.userData = { type: 'wrong', id: index + 1 };
+                    scene.add(mesh);
+                    interactiveObjects.push(mesh);
+                }, undefined, (err) => {
+                    createFallbackMesh(pos, 'wrong');
+                });
+            });
+
+            function createFallbackMesh(pos, type) {
+                const material = new THREE.MeshBasicMaterial({ color: type === 'correct' ? 0x00ff00 : 0xff0000, transparent: true, opacity: 0.3 });
+                const geometry = new THREE.PlaneGeometry(1.0, 1.0);
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.userData = { type: type };
+                scene.add(mesh);
+                interactiveObjects.push(mesh);
+            }
+
+            // Landscape orientation mapping
             window.addEventListener('deviceorientation', (event) => {
                 if (event.alpha === null) return;
 
@@ -215,7 +241,7 @@
                     let betaDelta = event.beta - (initialBeta || 0);
 
                     const alphaRad = THREE.MathUtils.degToRad(alphaDelta);
-                    const betaRad = THREE.MathUtils.degToRad(betaDelta - 15);
+                    const betaRad = THREE.MathUtils.degToRad(betaDelta - 10);
                     
                     camera.rotation.y = -alphaRad;
                     camera.rotation.x = -betaRad;
@@ -231,8 +257,15 @@
 
                 if (intersects.length > 0) {
                     const hitObject = intersects[0].object;
-                    foundFour(hitObject);
+                    handleTap(hitObject);
                 }
+            });
+
+            // Handle window resizing dynamically if orientation shifts
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
             });
 
             animate();
@@ -243,47 +276,77 @@
             renderer.render(scene, camera);
         }
 
-        function playWinSound() {
+        function playSound(type) {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const playTone = (freq, startTime, duration) => {
+                
+                if (type === 'win') {
+                    const playTone = (freq, startTime, duration) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + startTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(audioCtx.currentTime + startTime);
+                        osc.stop(audioCtx.currentTime + startTime + duration);
+                    };
+                    playTone(523.25, 0.0, 0.2);
+                    playTone(659.25, 0.1, 0.2);
+                    playTone(783.99, 0.2, 0.4);
+                } else {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime + startTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.3);
+                    
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
-                    osc.start(audioCtx.currentTime + startTime);
-                    osc.stop(audioCtx.currentTime + startTime + duration);
-                };
-                playTone(523.25, 0.0, 0.2);
-                playTone(659.25, 0.1, 0.2);
-                playTone(783.99, 0.2, 0.4);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
             } catch (e) {}
         }
 
         let remainingFours = 7;
 
-        function foundFour(object) {
-            playWinSound();
-
-            scene.remove(object);
-            interactiveObjects = interactiveObjects.filter(obj => obj !== object);
-
+        function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
-            popup.classList.add('show');
-            setTimeout(() => {
-                popup.classList.remove('show');
-            }, 1200);
 
-            remainingFours--;
-            if (remainingFours === 0) {
+            if (object.userData.type === 'correct') {
+                playSound('win');
+                scene.remove(object);
+                interactiveObjects = interactiveObjects.filter(obj => obj !== object);
+
+                popup.style.background = 'rgba(46, 204, 113, 0.95)';
+                popup.innerText = "🎉 Great Job!";
+                popup.classList.add('show');
                 setTimeout(() => {
-                    popup.innerText = "🌟 Amazing! You found all 7 Fours!";
-                    popup.classList.add('show');
-                }, 1500);
+                    popup.classList.remove('show');
+                }, 1200);
+
+                remainingFours--;
+                if (remainingFours === 0) {
+                    setTimeout(() => {
+                        popup.innerText = "🌟 Amazing! You found all 7 Fours!";
+                        popup.classList.add('show');
+                    }, 1500);
+                }
+            } else {
+                playSound('lose');
+
+                popup.style.background = 'rgba(231, 76, 60, 0.95)';
+                popup.innerText = "❌ Try Again!";
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                }, 1000);
             }
         }
     </script>
