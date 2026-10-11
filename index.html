@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Room Explorer - Hidden Fours</title>
+    <title>Find the Hidden Fours - Grade 1</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Room Fours">
+    <meta name="apple-mobile-web-app-title" content="Hidden Fours">
 
     <!-- Include Three.js for 3D world rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -25,7 +25,6 @@
             z-index: 1;
         }
         
-        /* Camera Feed Background handled by WebRTC */
         #cameraStream {
             position: fixed;
             top: 0;
@@ -36,7 +35,6 @@
             z-index: 0;
         }
 
-        /* Setup / Calibration Screen */
         #setupScreen {
             position: fixed;
             top: 0;
@@ -53,8 +51,8 @@
             text-align: center;
             padding: 25px;
         }
-        #setupScreen h1 { font-size: 24px; margin-bottom: 12px; }
-        #setupScreen p { font-size: 15px; color: #ccc; margin-bottom: 25px; max-width: 320px; line-height: 1.4; }
+        #setupScreen h1 { font-size: 26px; margin-bottom: 12px; }
+        #setupScreen p { font-size: 16px; color: #ccc; margin-bottom: 25px; max-width: 320px; line-height: 1.4; }
         #setupBtn {
             padding: 16px 36px;
             font-size: 18px;
@@ -67,7 +65,6 @@
             box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
         }
 
-        /* Popup Notification */
         #feedbackPopup {
             position: fixed;
             top: 20%;
@@ -93,20 +90,14 @@
 </head>
 <body>
 
-    <!-- Live Camera Feed -->
     <video id="cameraStream" autoplay playsinline muted></video>
-
-    <!-- Three.js 3D Canvas -->
     <div id="canvas-container"></div>
+    <div id="feedbackPopup">🎉 Great Job!</div>
 
-    <!-- Good Job Popup -->
-    <div id="feedbackPopup">🎉 Good Job!</div>
-
-    <!-- Setup Screen -->
     <div id="setupScreen">
-        <h1>🏫 Room Scavenger Hunt</h1>
-        <p>Stand in the center of the room, point your phone forward, and tap below to lock the hidden Fours into place!</p>
-        <button id="setupBtn" onclick="initApp()">Lock Room & Start</button>
+        <h1>⭐ Number 4 Scavenger Hunt</h1>
+        <p>Stand still, point your camera forward in the room, and tap the button below to start!</p>
+        <button id="setupBtn" onclick="initApp()">Start Game</button>
     </div>
 
     <script>
@@ -119,14 +110,12 @@
         let isCalibrated = false;
 
         async function initApp() {
-            // 1. Request iOS Motion Permission
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
                     await DeviceOrientationEvent.requestPermission();
                 } catch (e) {}
             }
 
-            // 2. Start Camera Feed
             const videoElement = document.getElementById('cameraStream');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
@@ -139,10 +128,8 @@
                 }
             }
 
-            // Hide setup screen
             document.getElementById('setupScreen').style.display = 'none';
 
-            // 3. Setup Three.js Scene
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
             
@@ -151,22 +138,20 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            // Add ambient lighting so textures look natural
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
             scene.add(ambientLight);
 
-            // 4. Create 7 3D Planes anchored around the room coordinates (X, Y, Z)
             const textureLoader = new THREE.TextureLoader();
             
-            // Define 7 fixed room coordinates relative to where the student clicked start
+            // Fixed positions placed in a friendly arc in front of the student
             const roomPositions = [
-                { x: 0,   y: 0.5,  z: -4 },  // Front
-                { x: 3,   y: 0,    z: -3 },  // Front Right
-                { x: -3,  y: 0.2,  z: -3 },  // Front Left
-                { x: 4,   y: 1,    z: 1 },   // Far Right
-                { x: -4,  y: 0.8,  z: 1 },   // Far Left
-                { x: 0,   y: 1.5,  z: -5 },  // High Up Center
-                { x: 1.5, y: -0.5, z: -2 }   // Low Down
+                { x: 0,   y: 0,    z: -3 },  // Center front
+                { x: -1.2, y: 0.3, z: -2.8 }, // Slight left
+                { x: 1.2,  y: 0.3, z: -2.8 }, // Slight right
+                { x: -2.2, y: 0,   z: -2.5 }, // Far left
+                { x: 2.2,  y: 0,   z: -2.5 }, // Far right
+                { x: -0.6, y: -0.8, z: -2.5 }, // Lower left
+                { x: 0.6,  y: -0.8, z: -2.5 }  // Lower right
             ];
 
             roomPositions.forEach((pos, index) => {
@@ -176,10 +161,10 @@
                     const material = new THREE.MeshBasicMaterial({ 
                         map: texture, 
                         transparent: true,
-                        blending: THREE.AdditiveBlending // Blends nicely into the room lighting
+                        blending: THREE.AdditiveBlending 
                     });
                     
-                    const geometry = new THREE.PlaneGeometry(1.2, 1.2);
+                    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
                     const mesh = new THREE.Mesh(geometry, material);
                     
                     mesh.position.set(pos.x, pos.y, pos.z);
@@ -188,9 +173,8 @@
                     scene.add(mesh);
                     interactiveObjects.push(mesh);
                 }, undefined, (err) => {
-                    // Fallback if image file is missing: create a colored plane
                     const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
-                    const geometry = new THREE.PlaneGeometry(1, 1);
+                    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
                     const mesh = new THREE.Mesh(geometry, material);
                     mesh.position.set(pos.x, pos.y, pos.z);
                     mesh.userData = { id: index + 1 };
@@ -199,7 +183,6 @@
                 });
             });
 
-            // 5. Capture Initial Orientation as the "Room Center"
             window.addEventListener('deviceorientation', (event) => {
                 if (!isCalibrated && event.alpha !== null) {
                     initialOrientation.alpha = event.alpha;
@@ -209,16 +192,14 @@
                 }
 
                 if (isCalibrated && event.alpha !== null) {
-                    // Smoothly map phone rotation to camera rotation
                     const alphaRad = THREE.MathUtils.degToRad(event.alpha - initialOrientation.alpha);
-                    const betaRad = THREE.MathUtils.degToRad(event.beta - 15); // adjust resting tilt
+                    const betaRad = THREE.MathUtils.degToRad(event.beta - 15);
                     
                     camera.rotation.y = -alphaRad;
                     camera.rotation.x = -betaRad;
                 }
             });
 
-            // 6. Handle Tap/Click Interaction to Find Fours
             window.addEventListener('pointerdown', (event) => {
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -232,7 +213,6 @@
                 }
             });
 
-            // Animation Loop
             animate();
         }
 
@@ -241,7 +221,6 @@
             renderer.render(scene, camera);
         }
 
-        // Win sound chime effect
         function playWinSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -250,7 +229,7 @@
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = freq;
-                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + startTime);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime + startTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
@@ -268,11 +247,9 @@
         function foundFour(object) {
             playWinSound();
 
-            // Remove object from scene permanently
             scene.remove(object);
             interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
-            // Show Popup
             const popup = document.getElementById('feedbackPopup');
             popup.classList.add('show');
             setTimeout(() => {
@@ -282,7 +259,7 @@
             remainingFours--;
             if (remainingFours === 0) {
                 setTimeout(() => {
-                    popup.innerText = "🌟 Amazing! You found all 7 hidden Fours in the room!";
+                    popup.innerText = "🌟 Amazing! You found all 7 Fours!";
                     popup.classList.add('show');
                 }, 1500);
             }
