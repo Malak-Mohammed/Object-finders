@@ -111,20 +111,18 @@
         let isCalibrated = false;
 
         async function startExperience() {
-            // 1. Request iOS 13+ Motion Permission explicitly on click
+            const setupBtn = document.getElementById('setupBtn');
+            setupBtn.innerText = "Loading Camera & Sensors...";
+            setupBtn.disabled = true;
+
+            // 1. Request iOS Motion Permission
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
-                    const response = await DeviceOrientationEvent.requestPermission();
-                    if (response !== 'granted') {
-                        alert("Motion permission is required to look around the room!");
-                        return;
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
+                    await DeviceOrientationEvent.requestPermission();
+                } catch (e) {}
             }
 
-            // 2. Start Camera Feed simultaneously
+            // 2. Start Camera Feed
             const videoElement = document.getElementById('cameraStream');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
@@ -134,15 +132,18 @@
                     videoElement.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
                 } catch (err) {
                     alert("Camera access is required.");
+                    setupBtn.innerText = "Start Game";
+                    setupBtn.disabled = false;
                     return;
                 }
             }
 
-            // 3. Wait a split second for sensors to stream valid numbers before hiding screen & locking calibration
+            // 3. Give the phone 1.5 seconds to settle its compass readings before locking positions
+            setupBtn.innerText = "Calibrating Room...";
             setTimeout(() => {
                 document.getElementById('setupScreen').style.display = 'none';
                 initThreeScene();
-            }, 400);
+            }, 1500);
         }
 
         function initThreeScene() {
@@ -159,12 +160,12 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // 360-degree scattered positions around the room coordinates (X, Y, Z)
+            // Scattered 360-degree coordinates around the room (Front, Sides, Back)
             const roomPositions = [
                 { x: 0,   y: 0.2,  z: -3.5 }, // Front
                 { x: 3.2, y: -0.1, z: -2.0 }, // Right
                 { x: -3.2,y: 0.4,  z: -2.0 }, // Left
-                { x: 0,   y: 0.2,  z: 3.5  }, // Back (Behind the student)
+                { x: 0,   y: 0.2,  z: 3.5  }, // Back (Behind student)
                 { x: 2.8, y: -0.4, z: 2.2  }, // Back Right
                 { x: -2.8,y: 1.2,  z: 2.2  }, // Back Left
                 { x: 0,   y: 2.0,  z: -2.5 }  // High Up Front
@@ -203,7 +204,6 @@
             window.addEventListener('deviceorientation', (event) => {
                 if (event.alpha === null) return;
 
-                // Lock the initial heading the exact moment the game screen opens
                 if (!isCalibrated && event.alpha !== null) {
                     initialAlpha = event.alpha;
                     initialBeta = event.beta;
@@ -211,7 +211,6 @@
                 }
 
                 if (isCalibrated) {
-                    // Calculate relative rotation from the starting direction
                     let alphaDelta = event.alpha - initialAlpha;
                     let betaDelta = event.beta - (initialBeta || 0);
 
@@ -270,7 +269,7 @@
         function foundFour(object) {
             playWinSound();
 
-            scene.root ? scene.remove(object) : scene.remove(object);
+            scene.remove(object);
             interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
             const popup = document.getElementById('feedbackPopup');
