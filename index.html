@@ -301,7 +301,6 @@
             });
 
             function createFallbackMesh(pos, type) {
-                // Fixed fallback: fully opaque and easy to see if images are missing
                 const material = new THREE.MeshBasicMaterial({ 
                     color: type === 'correct' ? 0x00FF00 : 0xFF0000, 
                     transparent: true, 
@@ -406,7 +405,8 @@
             } catch (e) {}
         }
 
-        let remainingFours = 4;
+        // Set to 3 so the game ends after finding 3 correct ones
+        let remainingFours = 3;
 
         function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
@@ -416,19 +416,21 @@
                 scene.remove(object);
                 interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
-                popup.style.background = 'rgba(46, 204, 113, 0.95)';
-                popup.innerText = "🎉 Great Job!";
-                popup.classList.add('show');
-                setTimeout(() => {
-                    popup.classList.remove('show');
-                }, 1200);
-
                 remainingFours--;
+
                 if (remainingFours === 0) {
                     setTimeout(() => {
-                        popup.innerText = "🌟 Amazing! You found all 4 Fours!";
+                        popup.style.background = 'rgba(46, 204, 113, 0.95)';
+                        popup.innerText = "🌟 Amazing! You found the hidden fours!";
                         popup.classList.add('show');
-                    }, 1500);
+                    }, 500);
+                } else {
+                    popup.style.background = 'rgba(46, 204, 113, 0.95)';
+                    popup.innerText = "🎉 Great Job!";
+                    popup.classList.add('show');
+                    setTimeout(() => {
+                        popup.classList.remove('show');
+                    }, 1200);
                 }
             } else {
                 playSound('lose');
