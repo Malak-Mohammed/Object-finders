@@ -3,26 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Room Explorer - Find the Hidden Fours</title>
+    <title>Room Explorer - Hidden Fours</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Room Explorer">
+    <meta name="apple-mobile-web-app-title" content="Room Fours">
+
+    <!-- Include Three.js for 3D world rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
         }
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-        /* Camera Feed */
+        
+        /* Camera Feed Background handled by WebRTC */
         #cameraStream {
             position: fixed;
             top: 0;
@@ -30,73 +33,11 @@
             width: 100vw;
             height: 100vh;
             object-fit: cover;
-            z-index: 1;
-        }
-        /* AR World Container that moves with the phone */
-        #arWorld {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-            transform-style: preserve-3d;
-        }
-        /* Individual AR Object Style */
-        .ar-object {
-            position: absolute;
-            width: 120px;
-            height: 120px;
-            transform: translate(-50%, -50%);
-            pointer-events: auto;
-            cursor: pointer;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease, transform 0.2s ease;
-        }
-        .ar-object img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            mix-blend-mode: overlay; /* Blends the PNG naturally into the environment */
-            filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
-        }
-        /* Fallback text if image doesn't load */
-        .ar-object .fallback-text {
-            font-size: 80px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.3);
-            mix-blend-mode: overlay;
-        }
-        
-        /* "Good Job!" Popup Overlay */
-        #feedbackPopup {
-            position: fixed;
-            top: 20%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: rgba(46, 204, 113, 0.9);
-            color: white;
-            padding: 15px 30px;
-            font-size: 28px;
-            font-weight: bold;
-            border-radius: 50px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            z-index: 10;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #feedbackPopup.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+            z-index: 0;
         }
 
-        /* Start Screen Overlay */
-        #startScreen {
+        /* Setup / Calibration Screen */
+        #setupScreen {
             position: fixed;
             top: 0;
             left: 0;
@@ -110,19 +51,11 @@
             z-index: 20;
             color: white;
             text-align: center;
-            padding: 20px;
+            padding: 25px;
         }
-        #startScreen h1 {
-            font-size: 26px;
-            margin-bottom: 15px;
-        }
-        #startScreen p {
-            font-size: 16px;
-            color: #ccc;
-            margin-bottom: 30px;
-            max-width: 300px;
-        }
-        #startBtn {
+        #setupScreen h1 { font-size: 24px; margin-bottom: 12px; }
+        #setupScreen p { font-size: 15px; color: #ccc; margin-bottom: 25px; max-width: 320px; line-height: 1.4; }
+        #setupBtn {
             padding: 16px 36px;
             font-size: 18px;
             font-weight: bold;
@@ -133,135 +66,179 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
         }
+
+        /* Popup Notification */
+        #feedbackPopup {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(46, 204, 113, 0.95);
+            color: white;
+            padding: 15px 30px;
+            font-size: 26px;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #feedbackPopup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Camera Video Element -->
+    <!-- Live Camera Feed -->
     <video id="cameraStream" autoplay playsinline muted></video>
 
-    <!-- AR World Container holding the 7 scattered Fours -->
-    <div id="arWorld"></div>
+    <!-- Three.js 3D Canvas -->
+    <div id="canvas-container"></div>
 
     <!-- Good Job Popup -->
     <div id="feedbackPopup">🎉 Good Job!</div>
 
-    <!-- Start Screen (Required for iOS Motion Sensors & Camera permission) -->
-    <div id="startScreen">
-        <h1>🔍 Room Explorer</h1>
-        <p>Move your iPhone around the room to find and tap all 7 hidden Fours!</p>
-        <button id="startBtn" onclick="startApp()">Start Game</button>
+    <!-- Setup Screen -->
+    <div id="setupScreen">
+        <h1>🏫 Room Scavenger Hunt</h1>
+        <p>Stand in the center of the room, point your phone forward, and tap below to lock the hidden Fours into place!</p>
+        <button id="setupBtn" onclick="initApp()">Lock Room & Start</button>
     </div>
 
     <script>
-        // 7 Scattered positions around the room (Yaw degrees [0-360] and Pitch degrees [-90 to 90])
-        const foursData = [
-            { id: 1, yaw: 0,   pitch: 10,  img: 'images/four1.png' },
-            { id: 2, yaw: 60,  pitch: -15, img: 'images/four2.png' },
-            { id: 3, yaw: 120, pitch: 20,  img: 'images/four3.png' },
-            { id: 4, yaw: 180, pitch: -5,  img: 'images/four4.png' },
-            { id: 5, yaw: 240, pitch: 15,  img: 'images/four5.png' },
-            { id: 6, yaw: 300, pitch: -20, img: 'images/four6.png' },
-            { id: 7, yaw: 90,  pitch: -30, img: 'images/four7.png' }
-        ];
+        let camera, scene, renderer;
+        let interactiveObjects = [];
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        
+        let initialOrientation = { alpha: 0, beta: 0, gamma: 0 };
+        let isCalibrated = false;
 
-        let remainingFours = foursData.length;
-        let currentYaw = 0;
-        let currentPitch = 0;
-
-        // Generate the elements dynamically into the AR world
-        function initARObjects() {
-            const world = document.getElementById('arWorld');
-            foursData.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'ar-object';
-                div.id = 'four-' + item.id;
-                
-                // Try loading PNG image, fallback to text "4" if missing
-                div.innerHTML = `
-                    <img src="${item.img}" alt="4" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <span class="fallback-text" style="display:none;">4</span>
-                `;
-                
-                div.onclick = () => foundFour(item.id);
-                world.appendChild(div);
-            });
-            updateObjectPositions();
-        }
-
-        // Update object screen coordinates based on phone rotation
-        function updateObjectPositions() {
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-
-            foursData.forEach(item => {
-                const el = document.getElementById('four-' + item.id);
-                if (!el || el.style.opacity === '0') return;
-
-                // Calculate angle difference from current phone direction
-                let angleDiff = item.yaw - currentYaw;
-                // Normalize angle to -180 to 180
-                while (angleDiff < -180) angleDiff += 360;
-                while (angleDiff > 180) angleDiff -= 360;
-
-                // Map yaw and pitch to screen X and Y coordinates
-                // 1 degree of rotation = roughly 10 pixels on screen
-                const x = (screenWidth / 2) + (angleDiff * 15);
-                const y = (screenHeight / 2) - ((item.pitch - currentPitch) * 15);
-
-                // Check if object is roughly in front of the camera view
-                if (Math.abs(angleDiff) < 70) {
-                    el.style.left = x + 'px';
-                    el.style.top = y + 'px';
-                    el.style.display = 'flex';
-                } else {
-                    el.style.display = 'none'; // Hide if looking away
-                }
-            });
-        }
-
-        // Handle iOS orientation permissions & Camera start
-        async function startApp() {
-            // Request iOS 13+ Motion Sensor Permission
+        async function initApp() {
+            // 1. Request iOS Motion Permission
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
-                    const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState !== 'granted') {
-                        alert("Motion permission is required to look around the room!");
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
+                    await DeviceOrientationEvent.requestPermission();
+                } catch (e) {}
             }
 
-            // Start Camera
+            // 2. Start Camera Feed
             const videoElement = document.getElementById('cameraStream');
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: "environment" } }
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
                 videoElement.srcObject = stream;
             } catch (e) {
                 try {
-                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    videoElement.srcObject = fallbackStream;
+                    videoElement.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
                 } catch (err) {
-                    alert("Camera access denied or unavailable.");
+                    alert("Camera access is required.");
                 }
             }
 
-            // Hide start screen
-            document.getElementById('startScreen').style.display = 'none';
+            // Hide setup screen
+            document.getElementById('setupScreen').style.display = 'none';
 
-            // Initialize AR objects and orientation tracking
-            initARObjects();
+            // 3. Setup Three.js Scene
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            window.addEventListener('deviceorientation', (event) => {
-                // alpha is compass direction (yaw), beta is front-to-back tilt (pitch)
-                if (event.alpha !== null) currentYaw = event.alpha;
-                if (event.beta !== null) currentPitch = event.beta;
-                updateObjectPositions();
+            // Add ambient lighting so textures look natural
+            const ambientLight = new THREE.AmbientLight(0ffffff, 1.5);
+            scene.add(ambientLight);
+
+            // 4. Create 7 3D Planes anchored around the room coordinates (X, Y, Z)
+            const textureLoader = new THREE.TextureLoader();
+            
+            // Define 7 fixed room coordinates relative to where the student clicked start
+            const roomPositions = [
+                { x: 0,   y: 0.5,  z: -4 },  // Front
+                { x: 3,   y: 0,    z: -3 },  // Front Right
+                { x: -3,  y: 0.2,  z: -3 },  // Front Left
+                { x: 4,   y: 1,    z: 1 },   // Far Right
+                { x: -4,  y: 0.8,  z: 1 },   // Far Left
+                { x: 0,   y: 1.5,  z: -5 },  // High Up Center
+                { x: 1.5, y: -0.5, z: -2 }   // Low Down
+            ];
+
+            roomPositions.forEach((pos, index) => {
+                const imagePath = `images/four${index + 1}.png`;
+                
+                textureLoader.load(imagePath, (texture) => {
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture, 
+                        transparent: true,
+                        blending: THREE.AdditiveBlending // Blends nicely into the room lighting
+                    });
+                    
+                    const geometry = new THREE.PlaneGeometry(1.2, 1.2);
+                    const mesh = new THREE.Mesh(geometry, material);
+                    
+                    mesh.position.set(pos.x, pos.y, pos.z);
+                    mesh.userData = { id: index + 1 };
+                    
+                    scene.add(mesh);
+                    interactiveObjects.push(mesh);
+                }, undefined, (err) => {
+                    // Fallback if image file is missing: create a colored plane
+                    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+                    const geometry = new THREE.PlaneGeometry(1, 1);
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(pos.x, pos.y, pos.z);
+                    mesh.userData = { id: index + 1 };
+                    scene.add(mesh);
+                    interactiveObjects.push(mesh);
+                });
             });
+
+            // 5. Capture Initial Orientation as the "Room Center"
+            window.addEventListener('deviceorientation', (event) => {
+                if (!isCalibrated && event.alpha !== null) {
+                    initialOrientation.alpha = event.alpha;
+                    initialOrientation.beta = event.beta;
+                    initialOrientation.gamma = event.gamma;
+                    isCalibrated = true;
+                }
+
+                if (isCalibrated && event.alpha !== null) {
+                    // Smoothly map phone rotation to camera rotation
+                    const alphaRad = THREE.MathUtils.degToRad(event.alpha - initialOrientation.alpha);
+                    const betaRad = THREE.MathUtils.degToRad(event.beta - 15); // adjust resting tilt
+                    
+                    camera.rotation.y = -alphaRad;
+                    camera.rotation.x = -betaRad;
+                }
+            });
+
+            // 6. Handle Tap/Click Interaction to Find Fours
+            window.addEventListener('pointerdown', (event) => {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(interactiveObjects);
+
+                if (intersects.length > 0) {
+                    const hitObject = intersects[0].object;
+                    foundFour(hitObject);
+                }
+            });
+
+            // Animation Loop
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
         }
 
         // Win sound chime effect
@@ -286,15 +263,16 @@
             } catch (e) {}
         }
 
-        function foundFour(id) {
+        let remainingFours = 7;
+
+        function foundFour(object) {
             playWinSound();
 
-            const el = document.getElementById('four-' + id);
-            if (el) {
-                el.style.opacity = '0';
-                el.style.pointerEvents = 'none';
-            }
+            // Remove object from scene permanently
+            scene.remove(object);
+            interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
+            // Show Popup
             const popup = document.getElementById('feedbackPopup');
             popup.classList.add('show');
             setTimeout(() => {
@@ -304,7 +282,7 @@
             remainingFours--;
             if (remainingFours === 0) {
                 setTimeout(() => {
-                    popup.innerText = "🌟 Amazing! You explored the whole room and found all 7!";
+                    popup.innerText = "🌟 Amazing! You found all 7 hidden Fours in the room!";
                     popup.classList.add('show');
                 }, 1500);
             }
