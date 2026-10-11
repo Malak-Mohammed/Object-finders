@@ -259,12 +259,11 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Exactly 4 Correct Fours scattered around the room in 3D world space
             const correctPositions = [
-                { x: 0,   y: 0.2,  z: -3.5, file: 'images/four1.png' },
-                { x: 3.5, y: -0.1, z: -2.2, file: 'images/four2.png' },
-                { x: -3.5,y: 0.4,  z: -2.2, file: 'images/four3.png' },
-                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four4.png' }
+                { x: 0,   y: 0.2,  z: -3.5, file: 'images/four3.png' },
+                { x: 3.5, y: -0.1, z: -2.2, file: 'images/four4.png' },
+                { x: -3.5,y: 0.4,  z: -2.2, file: 'images/four5.png' },
+                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four6.png' }
             ];
 
             const wrongPositions = [
@@ -302,7 +301,12 @@
             });
 
             function createFallbackMesh(pos, type) {
-                const material = new THREE.MeshBasicMaterial({ color: type === 'correct' ? 0x00ff00 : 0xff0000, transparent: true, opacity: 0.3 });
+                // Fixed fallback: fully opaque and easy to see if images are missing
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: type === 'correct' ? 0x00FF00 : 0xFF0000, 
+                    transparent: true, 
+                    opacity: 0.9 
+                });
                 const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.set(pos.x, pos.y, pos.z);
