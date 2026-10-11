@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hidden 4 Camera</title>
+    
+    <!-- Make it behave like a real app when added to iPhone Home Screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hidden 4">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        /* Camera Feed filling the screen */
+        #cameraStream {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+        }
+        /* The Hidden Number 4 Overlay */
+        #hiddenNumber {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 140px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.2); /* Adjust transparency here */
+            mix-blend-mode: overlay; /* Blends naturally with camera textures */
+            pointer-events: none; /* Allows clicks/touches to pass through */
+            z-index: 2;
+            user-select: none;
+        }
+        /* Fallback button if autoplay permissions block the camera */
+        #startBtn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 30px;
+            z-index: 10;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Camera Video Element -->
+    <video id="cameraStream" autoplay playsinline muted></video>
+
+    <!-- The Hidden Number -->
+    <div id="hiddenNumber">4</div>
+
+    <!-- Start Button (In case browser requires a tap to start camera) -->
+    <button id="startBtn" onclick="initCamera()">Tap to Open Camera</button>
+
+    <script>
+        async function initCamera() {
+            const videoElement = document.getElementById('cameraStream');
+            const startButton = document.getElementById('startBtn');
+            
+            try {
+                // Request back camera (environment facing)
+                const constraints = {
+                    video: { facingMode: { exact: "environment" } }
+                };
+                
+                // Fallback to any camera if environment camera isn't available
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (e) {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+
+                videoElement.srcObject = stream;
+                startButton.style.display = 'none'; // Hide button once camera starts
+            } catch (error) {
+                alert("Camera access denied or not supported on this browser: " + error);
+            }
+        }
+
+        // Try launching automatically on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initCamera();
+        });
+    </script>
+</body>
+</html>
