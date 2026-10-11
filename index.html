@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hidden 4 Camera</title>
+    <title>Find the Hidden Fours</title>
     
-    <!-- Make it behave like a real app when added to iPhone Home Screen -->
+    <!-- Apple Web App configurations -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hidden 4">
+    <meta name="apple-mobile-web-app-title" content="Hidden Fours">
 
     <style>
         * {
@@ -23,7 +23,7 @@
             background: #000;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        /* Camera Feed filling the screen */
+        /* Camera Feed */
         #cameraStream {
             position: fixed;
             top: 0;
@@ -33,21 +33,57 @@
             object-fit: cover;
             z-index: 1;
         }
-        /* The Hidden Number 4 Overlay */
-        #hiddenNumber {
+        /* Container for the 7 hidden numbers */
+        #gameArea {
             position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 140px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.2); /* Adjust transparency here */
-            mix-blend-mode: overlay; /* Blends naturally with camera textures */
-            pointer-events: none; /* Allows clicks/touches to pass through */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 2;
-            user-select: none;
+            pointer-events: none; /* Let clicks pass through empty spaces */
         }
-        /* Fallback button if autoplay permissions block the camera */
+        /* Individual Number Style */
+        .hidden-four {
+            position: absolute;
+            font-size: 70px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.25); /* Subtle hidden look */
+            mix-blend-mode: overlay; /* Blends naturally with camera textures */
+            pointer-events: auto; /* Allow clicking on the number itself */
+            cursor: pointer;
+            user-select: none;
+            padding: 20px; /* Makes it easier for a student's finger to tap */
+            transition: transform 0.2s ease, opacity 0.3s ease;
+        }
+        .hidden-four:active {
+            transform: scale(1.2);
+        }
+        
+        /* "Good Job!" Popup Overlay */
+        #feedbackPopup {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(46, 204, 113, 0.9);
+            color: white;
+            padding: 15px 30px;
+            font-size: 28px;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #feedbackPopup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Start Button */
         #startBtn {
             position: absolute;
             top: 50%;
@@ -60,7 +96,7 @@
             color: #000000;
             border: none;
             border-radius: 30px;
-            z-index: 10;
+            z-index: 20;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
@@ -71,24 +107,71 @@
     <!-- Camera Video Element -->
     <video id="cameraStream" autoplay playsinline muted></video>
 
-    <!-- The Hidden Number -->
-    <div id="hiddenNumber">4</div>
+    <!-- Game Area with 7 Fours placed at fixed percentages -->
+    <div id="gameArea">
+        <!-- 1 -->
+        <div class="hidden-four" style="top: 15%; left: 10%;" onclick="foundFour(this)">4</div>
+        <!-- 2 -->
+        <div class="hidden-four" style="top: 25%; right: 15%;" onclick="foundFour(this)">4</div>
+        <!-- 3 -->
+        <div class="hidden-four" style="top: 50%; left: 20%;" onclick="foundFour(this)">4</div>
+        <!-- 4 -->
+        <div class="hidden-four" style="top: 45%; right: 25%;" onclick="foundFour(this)">4</div>
+        <!-- 5 -->
+        <div class="hidden-four" style="top: 75%; left: 12%;" onclick="foundFour(this)">4</div>
+        <!-- 6 -->
+        <div class="hidden-four" style="top: 70%; right: 15%;" onclick="foundFour(this)">4</div>
+        <!-- 7 -->
+        <div class="hidden-four" style="top: 88%; left: 45%;" onclick="foundFour(this)">4</div>
+    </div>
 
-    <!-- Start Button (In case browser requires a tap to start camera) -->
-    <button id="startBtn" onclick="initCamera()">Tap to Open Camera</button>
+    <!-- Good Job Popup -->
+    <div id="feedbackPopup">🎉 Good Job!</div>
+
+    <!-- Start Button -->
+    <button id="startBtn" onclick="initCamera()">Tap to Start Exploration</button>
 
     <script>
+        // Synthesize a smooth win chime sound using the browser's Web Audio API (No audio files needed!)
+        function playWinSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Play a pleasant two-note chord (C major chime)
+                const playTone = (freq, startTime, duration) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.start(audioCtx.currentTime + startTime);
+                    osc.stop(audioCtx.currentTime + startTime + duration);
+                };
+
+                playTone(523.25, 0.0, 0.2); // C5
+                playTone(659.25, 0.1, 0.2); // E5
+                playTone(783.99, 0.2, 0.4); // G5
+            } catch (e) {
+                console.log("Audio not supported or blocked", e);
+            }
+        }
+
         async function initCamera() {
             const videoElement = document.getElementById('cameraStream');
             const startButton = document.getElementById('startBtn');
             
             try {
-                // Request back camera (environment facing)
                 const constraints = {
                     video: { facingMode: { exact: "environment" } }
                 };
                 
-                // Fallback to any camera if environment camera isn't available
                 let stream;
                 try {
                     stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -97,16 +180,40 @@
                 }
 
                 videoElement.srcObject = stream;
-                startButton.style.display = 'none'; // Hide button once camera starts
+                startButton.style.display = 'none';
             } catch (error) {
                 alert("Camera access denied or not supported on this browser: " + error);
             }
         }
 
-        // Try launching automatically on load
-        window.addEventListener('DOMContentLoaded', () => {
-            initCamera();
-        });
+        let remainingFours = 7;
+
+        function foundFour(element) {
+            // Play win sound effect
+            playWinSound();
+
+            // Hide the clicked four permanently
+            element.style.opacity = '0';
+            element.style.pointerEvents = 'none';
+            
+            // Show "Good Job!" popup
+            const popup = document.getElementById('feedbackPopup');
+            popup.classList.add('show');
+            
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 1200);
+
+            remainingFours--;
+
+            // Optional: If all 7 are found, show a celebratory message
+            if (remainingFours === 0) {
+                setTimeout(() => {
+                    popup.innerText = "🌟 Amazing! You found all 7!";
+                    popup.classList.add('show');
+                }, 1500);
+            }
+        }
     </script>
 </body>
 </html>
