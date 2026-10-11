@@ -20,8 +20,6 @@
             overflow: hidden; 
             background: #000; 
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            /* Force orientation hint for browsers */
-            orientation: landscape;
         }
         
         #canvas-container {
@@ -104,7 +102,7 @@
 
     <div id="setupScreen">
         <h1>⭐ Number 4 Scavenger Hunt</h1>
-        <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to start!</p>
+        <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to lock the room!</p>
         <button id="setupBtn" onclick="startExperience()">Start Game</button>
     </div>
 
@@ -114,9 +112,9 @@
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         
-        let initialAlpha = null;
-        let initialBeta = null;
-        let isCalibrated = false;
+        let targetQuaternion = new THREE.Quaternion();
+        let baseQuaternion = new THREE.Quaternion();
+        let hasBase = false;
 
         async function startExperience() {
             const setupBtn = document.getElementById('setupBtn');
@@ -168,22 +166,22 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // 7 Correct Fours scattered around in landscape field of view
+            // 7 Correct Fours scattered around the room in 3D world space
             const correctPositions = [
-                { x: 0,   y: 0.1,  z: -3.5, file: 'images/four1.png' },
-                { x: 3.5, y: -0.2, z: -2.2, file: 'images/four2.png' },
-                { x: -3.5,y: 0.3,  z: -2.2, file: 'images/four3.png' },
-                { x: 0,   y: 0.1,  z: 3.5,  file: 'images/four4.png' },
+                { x: 0,   y: 0.2,  z: -3.5, file: 'images/four1.png' },
+                { x: 3.5, y: -0.1, z: -2.2, file: 'images/four2.png' },
+                { x: -3.5,y: 0.4,  z: -2.2, file: 'images/four3.png' },
+                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four4.png' },
                 { x: 3.0, y: -0.4, z: 2.2,  file: 'images/four5.png' },
-                { x: -3.0,y: 1.0,  z: 2.2,  file: 'images/four6.png' },
-                { x: 0,   y: 1.8,  z: -2.5, file: 'images/four7.png' }
+                { x: -3.0,y: 1.2,  z: 2.2,  file: 'images/four6.png' },
+                { x: 0,   y: 2.0,  z: -2.5, file: 'images/four7.png' }
             ];
 
             // 3 Wrong / Distractor Numbers
             const wrongPositions = [
                 { x: -1.8, y: -0.5, z: -3.0, file: 'images/wrong1.png' },
-                { x: 1.8,  y: 0.7,  z: -2.8, file: 'images/wrong2.png' },
-                { x: 0,    y: -1.0, z:  2.0, file: 'images/wrong3.png' }
+                { x: 1.8,  y: 0.8,  z: -2.8, file: 'images/wrong2.png' },
+                { x: 0,    y: -1.2, z:  2.0, file: 'images/wrong3.png' }
             ];
 
             // Load Correct Fours
@@ -226,26 +224,42 @@
                 interactiveObjects.push(mesh);
             }
 
-            // Landscape orientation mapping
+            // Proper Quaternion DeviceOrientation handling for Landscape Mode
+            const zee = new THREE.Vector3(0, 0, 1);
+            const europaQuaternion = new THREE.Quaternion();
+            const orientQuaternion = new THREE.Quaternion();
+
             window.addEventListener('deviceorientation', (event) => {
                 if (event.alpha === null) return;
 
-                if (!isCalibrated && event.alpha !== null) {
-                    initialAlpha = event.alpha;
-                    initialBeta = event.beta;
-                    isCalibrated = true;
+                const alpha = THREE.MathUtils.degToRad(event.alpha || 0);
+                const beta  = THREE.MathUtils.degToRad(event.beta || 0);
+                const gamma = THREE.MathUtils.degToRad(event.gamma || 0);
+                const orient = THREE.MathUtils.degToRad(window.orientation || 0);
+
+                // Convert device angles to Three.js orientation quaternion
+                const cX = Math.cos(beta / 2),  sX = Math.sin(beta / 2);
+                const cY = Math.cos(gamma / 2), sY = Math.sin(gamma / 2);
+                const cZ = Math.cos(alpha / 2), sZ = Math.sin(alpha / 2);
+
+                europaQuaternion.set(
+                    sX * cY * cZ - cX * sY * sZ,
+                    cX * sY * cZ + sX * cY * sZ,
+                    cX * cY * sZ + sX * sY * cZ,
+                    cX * cY * cZ - sX * sY * sZ
+                );
+
+                // Adjust for landscape orientation twist (-90 degrees around Z axis)
+                targetQuaternion.copy(europaQuaternion);
+                
+                // Set initial room lock on first valid reading
+                if (!hasBase) {
+                    baseQuaternion.copy(targetQuaternion).invert();
+                    hasBase = true;
                 }
 
-                if (isCalibrated) {
-                    let alphaDelta = event.alpha - initialAlpha;
-                    let betaDelta = event.beta - (initialBeta || 0);
-
-                    const alphaRad = THREE.MathUtils.degToRad(alphaDelta);
-                    const betaRad = THREE.MathUtils.degToRad(betaDelta - 10);
-                    
-                    camera.rotation.y = -alphaRad;
-                    camera.rotation.x = -betaRad;
-                }
+                // Apply relative room rotation
+                camera.quaternion.copy(baseQuaternion).multiply(targetQuaternion);
             });
 
             window.addEventListener('pointerdown', (event) => {
@@ -261,7 +275,6 @@
                 }
             });
 
-            // Handle window resizing dynamically if orientation shifts
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
