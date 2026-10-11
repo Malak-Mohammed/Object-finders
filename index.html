@@ -19,7 +19,7 @@
             height: 100%; 
             overflow: hidden; 
             background: #000; 
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         
         #canvas-container {
@@ -29,7 +29,7 @@
             width: 100vw;
             height: 100vh;
             z-index: 1;
-            pointer-events: none; /* Let touches pass through canvas to window listener or handle via webgl */
+            pointer-events: none;
         }
         
         #cameraStream {
@@ -42,13 +42,35 @@
             z-index: 0;
         }
 
+        @keyframes bounceAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 10px 25px rgba(255, 107, 129, 0.6), 0 0 20px rgba(255, 215, 0, 0.4); 
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 15px 35px rgba(255, 107, 129, 0.9), 0 0 35px rgba(255, 215, 0, 0.8); 
+            }
+        }
+
+        @keyframes floatBubble {
+            0% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+            50% { transform: translateY(-20px) rotate(5deg); opacity: 1; }
+            100% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+        }
+
         #setupScreen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0,0,0,0.85);
+            background: radial-gradient(circle at center, #FF6B81 0%, #FF416C 40%, #8E44AD 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -56,20 +78,82 @@
             z-index: 20;
             color: white;
             text-align: center;
-            padding: 25px;
+            padding: 20px;
+            overflow-y: auto;
         }
-        #setupScreen h1 { font-size: 26px; margin-bottom: 10px; }
-        #setupScreen p { font-size: 15px; color: #ccc; margin-bottom: 20px; max-width: 400px; line-height: 1.4; }
+
+        .setup-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 4px solid rgba(255, 255, 255, 0.6);
+            border-radius: 40px;
+            padding: 30px 20px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: floatBubble 4s ease-in-out infinite;
+        }
+
+        .badge-icon {
+            font-size: 50px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+            animation: bounceAnim 2s ease-in-out infinite;
+        }
+
+        #setupScreen h1 { 
+            font-size: 32px; 
+            margin-bottom: 12px; 
+            text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            letter-spacing: 0.8px;
+            color: #FFF;
+            font-weight: 900;
+        }
+
+        #setupScreen p { 
+            font-size: 16px; 
+            color: #FFF5F7; 
+            margin-bottom: 24px; 
+            line-height: 1.5; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
         #setupBtn {
-            padding: 14px 32px;
-            font-size: 18px;
-            font-weight: bold;
-            background: #2ecc71;
-            color: #ffffff;
-            border: none;
-            border-radius: 30px;
+            padding: 18px 40px;
+            font-size: 22px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+            color: #2C3E50;
+            border: 3px solid #FFF;
+            border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+            animation: pulseGlow 2s infinite;
+            transition: transform 0.2s ease, filter 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.6);
+        }
+
+        #setupBtn:active {
+            transform: scale(0.92);
+        }
+
+        .teacher-credit {
+            margin-top: 22px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            color: #FFF;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 8px 22px;
+            border-radius: 25px;
+            border: 2px dashed rgba(255, 255, 255, 0.5);
         }
 
         #feedbackPopup {
@@ -102,9 +186,13 @@
     <div id="feedbackPopup">🎉 Great Job!</div>
 
     <div id="setupScreen">
-        <h1>⭐ Number 4 Scavenger Hunt</h1>
-        <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to lock the room!</p>
-        <button id="setupBtn" onclick="startExperience()">Start Game</button>
+        <div class="setup-card">
+            <div class="badge-icon">⭐🔢⭐</div>
+            <h1>Number 4 Scavenger Hunt</h1>
+            <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to start your adventure!</p>
+            <button id="setupBtn" onclick="startExperience()">Start Game</button>
+            <div class="teacher-credit">By Teacher Nada</div>
+        </div>
     </div>
 
     <script>
@@ -113,17 +201,15 @@
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         
-        // Orientation variables
         let screenOrientation = 0;
         let deviceEuler = new THREE.Euler();
         let deviceQuaternion = new THREE.Quaternion();
         const zee = new THREE.Vector3(0, 0, 1);
         const cameraQuaternion = new THREE.Quaternion();
 
-        // Fix rotations to align world orientation
         const targetQuaternion = new THREE.Quaternion();
-        const q0 = new THREE.Quaternion(); // initial calibration offset
-        const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -90 deg rotation around X-axis for portrait/landscape alignment
+        const q0 = new THREE.Quaternion(); 
+        const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); 
         let isCalibrated = false;
 
         async function startExperience() {
@@ -131,14 +217,12 @@
             setupBtn.innerText = "Loading Camera & Sensors...";
             setupBtn.disabled = true;
 
-            // 1. Request iOS Motion Permission
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
                     await DeviceOrientationEvent.requestPermission();
                 } catch (e) {}
             }
 
-            // 2. Start Camera Feed
             const videoElement = document.getElementById('cameraStream');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
@@ -154,7 +238,6 @@
                 }
             }
 
-            // 3. Calibrate room sensors
             setupBtn.innerText = "Calibrating Room...";
             setTimeout(() => {
                 document.getElementById('setupScreen').style.display = 'none';
@@ -176,25 +259,20 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // 7 Correct Fours scattered around the room in 3D world space
+            // Exactly 4 Correct Fours scattered around the room in 3D world space
             const correctPositions = [
                 { x: 0,   y: 0.2,  z: -3.5, file: 'images/four1.png' },
                 { x: 3.5, y: -0.1, z: -2.2, file: 'images/four2.png' },
                 { x: -3.5,y: 0.4,  z: -2.2, file: 'images/four3.png' },
-                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four4.png' },
-                { x: 3.0, y: -0.4, z: 2.2,  file: 'images/four5.png' },
-                { x: -3.0,y: 1.2,  z: 2.2,  file: 'images/four6.png' },
-                { x: 0,   y: 2.0,  z: -2.5, file: 'images/four7.png' }
+                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four4.png' }
             ];
 
-            // 3 Wrong / Distractor Numbers
             const wrongPositions = [
                 { x: -1.8, y: -0.5, z: -3.0, file: 'images/wrong1.png' },
                 { x: 1.8,  y: 0.8,  z: -2.8, file: 'images/wrong2.png' },
                 { x: 0,    y: -1.2, z:  2.0, file: 'images/wrong3.png' }
             ];
 
-            // Load Correct Fours
             correctPositions.forEach((pos, index) => {
                 textureLoader.load(pos.file, (texture) => {
                     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
@@ -209,7 +287,6 @@
                 });
             });
 
-            // Load Wrong Numbers
             wrongPositions.forEach((pos, index) => {
                 textureLoader.load(pos.file, (texture) => {
                     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
@@ -234,7 +311,6 @@
                 interactiveObjects.push(mesh);
             }
 
-            // Device Orientation Event Listeners
             window.addEventListener('deviceorientation', onDeviceOrientationChangeEvent, false);
             window.addEventListener('orientationchange', () => {
                 screenOrientation = window.orientation || 0;
@@ -264,39 +340,27 @@
         }
 
         function onDeviceOrientationChangeEvent(event) {
-            const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0; // z
-            const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;   // x
-            const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0; // y
-            const orient = THREE.MathUtils.degToRad(screenOrientation || 0);     // screen orientation
+            const alpha = event.alpha ? THREE.MathUtils.degToRad(event.alpha) : 0;
+            const beta = event.beta ? THREE.MathUtils.degToRad(event.beta) : 0;
+            const gamma = event.gamma ? THREE.MathUtils.degToRad(event.gamma) : 0;
+            const orient = THREE.MathUtils.degToRad(screenOrientation || 0);
 
-            // Standard Three.js / W3C orientation conversion formula
             deviceEuler.set(beta, alpha, -gamma, 'YXZ');
             deviceQuaternion.setFromEuler(deviceEuler);
-            deviceQuaternion.multiply(q1); // camera axes adjustment
-            deviceQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(zee, -orient)); // screen rotation adjustment
+            deviceQuaternion.multiply(q1);
+            deviceQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(zee, -orient));
 
             if (!isCalibrated) {
-                // Lock current heading as center base view upon first motion event
                 q0.copy(deviceQuaternion).invert();
                 isCalibrated = true;
             }
 
-            // Combine base offset with current sensor orientation
             targetQuaternion.copy(q0).multiply(deviceQuaternion);
         }
 
         function animate() {
             requestAnimationFrame(animate);
-
-            // Smoothly interpolate camera rotation to prevent jitter
             camera.quaternion.slerp(targetQuaternion, 0.25);
-
-            // Make sure all billboarded numbers face the camera or stay fixed in place
-            interactiveObjects.forEach(obj => {
-                // If you want numbers to always face you like billboards, uncomment below:
-                // obj.quaternion.copy(camera.quaternion);
-            });
-
             renderer.render(scene, camera);
         }
 
@@ -338,7 +402,7 @@
             } catch (e) {}
         }
 
-        let remainingFours = 7;
+        let remainingFours = 4;
 
         function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
@@ -358,7 +422,7 @@
                 remainingFours--;
                 if (remainingFours === 0) {
                     setTimeout(() => {
-                        popup.innerText = "🌟 Amazing! You found all 7 Fours!";
+                        popup.innerText = "🌟 Amazing! You found all 4 Fours!";
                         popup.classList.add('show');
                     }, 1500);
                 }
