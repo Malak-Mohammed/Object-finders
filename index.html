@@ -96,8 +96,8 @@
 
     <div id="setupScreen">
         <h1>⭐ Number 4 Scavenger Hunt</h1>
-        <p>Stand in the center of the room, look around in a circle, and tap the button below to start!</p>
-        <button id="setupBtn" onclick="initApp()">Start Game</button>
+        <p>Stand in the center of the room, point your phone forward, and tap below to start!</p>
+        <button id="setupBtn" onclick="startExperience()">Start Game</button>
     </div>
 
     <script>
@@ -106,16 +106,25 @@
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         
-        let initialOrientation = { alpha: 0, beta: 0, gamma: 0 };
+        let initialAlpha = null;
+        let initialBeta = null;
         let isCalibrated = false;
 
-        async function initApp() {
+        async function startExperience() {
+            // 1. Request iOS 13+ Motion Permission explicitly on click
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
-                    await DeviceOrientationEvent.requestPermission();
-                } catch (e) {}
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response !== 'granted') {
+                        alert("Motion permission is required to look around the room!");
+                        return;
+                    }
+                } catch (e) {
+                    console.log(e);
+                }
             }
 
+            // 2. Start Camera Feed simultaneously
             const videoElement = document.getElementById('cameraStream');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
@@ -125,11 +134,18 @@
                     videoElement.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
                 } catch (err) {
                     alert("Camera access is required.");
+                    return;
                 }
             }
 
-            document.getElementById('setupScreen').style.display = 'none';
+            // 3. Wait a split second for sensors to stream valid numbers before hiding screen & locking calibration
+            setTimeout(() => {
+                document.getElementById('setupScreen').style.display = 'none';
+                initThreeScene();
+            }, 400);
+        }
 
+        function initThreeScene() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
             
@@ -143,15 +159,15 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Scattered all around the room in a 360-degree circle, smaller size (1.0 x 1.0)
+            // 360-degree scattered positions around the room coordinates (X, Y, Z)
             const roomPositions = [
                 { x: 0,   y: 0.2,  z: -3.5 }, // Front
-                { x: 2.8, y: -0.2, z: -2.5 }, // Right
-                { x: -2.8,y: 0.5,  z: -2.5 }, // Left
-                { x: 3.5, y: 0,    z: 1.5 },  // Back Right
-                { x: -3.5,y: -0.3, z: 1.5 },  // Back Left
-                { x: 0,   y: 1.5,  z: -3 },   // High Up Center
-                { x: 1.5, y: -1.0, z: -2.5 }  // Lower Right
+                { x: 3.2, y: -0.1, z: -2.0 }, // Right
+                { x: -3.2,y: 0.4,  z: -2.0 }, // Left
+                { x: 0,   y: 0.2,  z: 3.5  }, // Back (Behind the student)
+                { x: 2.8, y: -0.4, z: 2.2  }, // Back Right
+                { x: -2.8,y: 1.2,  z: 2.2  }, // Back Left
+                { x: 0,   y: 2.0,  z: -2.5 }  // High Up Front
             ];
 
             roomPositions.forEach((pos, index) => {
@@ -164,7 +180,6 @@
                         blending: THREE.AdditiveBlending 
                     });
                     
-                    // Smaller size for a cleaner hidden look
                     const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
                     
@@ -184,17 +199,24 @@
                 });
             });
 
+            // Listen to device orientation to rotate view in 360 degrees
             window.addEventListener('deviceorientation', (event) => {
+                if (event.alpha === null) return;
+
+                // Lock the initial heading the exact moment the game screen opens
                 if (!isCalibrated && event.alpha !== null) {
-                    initialOrientation.alpha = event.alpha;
-                    initialOrientation.beta = event.beta;
-                    initialOrientation.gamma = event.gamma;
+                    initialAlpha = event.alpha;
+                    initialBeta = event.beta;
                     isCalibrated = true;
                 }
 
-                if (isCalibrated && event.alpha !== null) {
-                    const alphaRad = THREE.MathUtils.degToRad(event.alpha - initialOrientation.alpha);
-                    const betaRad = THREE.MathUtils.degToRad(event.beta - 15);
+                if (isCalibrated) {
+                    // Calculate relative rotation from the starting direction
+                    let alphaDelta = event.alpha - initialAlpha;
+                    let betaDelta = event.beta - (initialBeta || 0);
+
+                    const alphaRad = THREE.MathUtils.degToRad(alphaDelta);
+                    const betaRad = THREE.MathUtils.degToRad(betaDelta - 15);
                     
                     camera.rotation.y = -alphaRad;
                     camera.rotation.x = -betaRad;
@@ -248,7 +270,7 @@
         function foundFour(object) {
             playWinSound();
 
-            scene.remove(object);
+            scene.root ? scene.remove(object) : scene.remove(object);
             interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
             const popup = document.getElementById('feedbackPopup');
