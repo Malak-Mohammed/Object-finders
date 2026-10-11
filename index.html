@@ -96,7 +96,7 @@
 
     <div id="setupScreen">
         <h1>⭐ Number 4 Scavenger Hunt</h1>
-        <p>Stand still, point your camera forward in the room, and tap the button below to start!</p>
+        <p>Stand in the center of the room, look around in a circle, and tap the button below to start!</p>
         <button id="setupBtn" onclick="initApp()">Start Game</button>
     </div>
 
@@ -143,15 +143,15 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Fixed positions placed in a friendly arc in front of the student
+            // Scattered all around the room in a 360-degree circle, smaller size (1.0 x 1.0)
             const roomPositions = [
-                { x: 0,   y: 0,    z: -3 },  // Center front
-                { x: -1.2, y: 0.3, z: -2.8 }, // Slight left
-                { x: 1.2,  y: 0.3, z: -2.8 }, // Slight right
-                { x: -2.2, y: 0,   z: -2.5 }, // Far left
-                { x: 2.2,  y: 0,   z: -2.5 }, // Far right
-                { x: -0.6, y: -0.8, z: -2.5 }, // Lower left
-                { x: 0.6,  y: -0.8, z: -2.5 }  // Lower right
+                { x: 0,   y: 0.2,  z: -3.5 }, // Front
+                { x: 2.8, y: -0.2, z: -2.5 }, // Right
+                { x: -2.8,y: 0.5,  z: -2.5 }, // Left
+                { x: 3.5, y: 0,    z: 1.5 },  // Back Right
+                { x: -3.5,y: -0.3, z: 1.5 },  // Back Left
+                { x: 0,   y: 1.5,  z: -3 },   // High Up Center
+                { x: 1.5, y: -1.0, z: -2.5 }  // Lower Right
             ];
 
             roomPositions.forEach((pos, index) => {
@@ -164,7 +164,8 @@
                         blending: THREE.AdditiveBlending 
                     });
                     
-                    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
+                    // Smaller size for a cleaner hidden look
+                    const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
                     
                     mesh.position.set(pos.x, pos.y, pos.z);
@@ -174,7 +175,7 @@
                     interactiveObjects.push(mesh);
                 }, undefined, (err) => {
                     const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
-                    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
+                    const geometry = new THREE.PlaneGeometry(1.0, 1.0);
                     const mesh = new THREE.Mesh(geometry, material);
                     mesh.position.set(pos.x, pos.y, pos.z);
                     mesh.userData = { id: index + 1 };
