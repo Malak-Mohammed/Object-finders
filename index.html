@@ -282,7 +282,7 @@
         <div class="victory-card">
             <div class="victory-stars">⭐⭐🌟⭐⭐</div>
             <h2>AMAZING!</h2>
-            <p>You found all the hidden Letter K's!</p>
+            <p>You found all 3 hidden Letter K's!</p>
             <button id="restartBtn" onclick="location.reload()">Play Again</button>
         </div>
     </div>
@@ -358,7 +358,7 @@
             }, 1000);
         }
 
-        // Background music generator for fun immersion
+        // Background music generator
         function startBackgroundMusic() {
             if (!audioCtx) return;
             const notes = [261.63, 329.63, 392.00, 523.25]; // C chord notes
@@ -395,20 +395,18 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Correct objects (Letter K images)
+            // Exactly 3 correct objects (k1.png, k2.png, k3.png)
             const correctPositions = [
                 { x: 0,    y: 0.2,  z: -3.5, file: 'images/k1.png' },
                 { x: 3.5,  y: -0.1, z: -2.2, file: 'images/k2.png' },
-                { x: -3.5, y: 0.4,  z: -2.2, file: 'images/k3.png' },
-                { x: 0,    y: 0.2,  z: 3.5,  file: 'images/k4.png' }
+                { x: -3.5, y: 0.4,  z: -2.2, file: 'images/k3.png' }
             ];
 
-            // Wrong objects
+            // 3 wrong objects (wr1.png, wr2.png, wr3.png)
             const wrongPositions = [
                 { x: -1.8, y: -0.5, z: -3.0, file: 'images/wr1.png' },
                 { x: 1.8,  y: 0.8,  z: -2.8, file: 'images/wr2.png' },
-                { x: 0,    y: -1.2, z: 2.0,  file: 'images/wr3.png' },
-                { x: 2.2,  y: -0.8, z: 2.5,  file: 'images/wr4.png' }
+                { x: 0,    y: -1.2, z: 2.0,  file: 'images/wr3.png' }
             ];
 
             correctPositions.forEach((pos, index) => {
@@ -528,7 +526,6 @@
                     playTone(659.25, 0.1, 0.2);
                     playTone(783.99, 0.2, 0.4);
                 } else if (type === 'victory') {
-                    // Epic Grand Victory Arpeggio Sequence
                     const fanfareNotes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
                     fanfareNotes.forEach((note, idx) => {
                         const osc = audioCtx.createOscillator();
@@ -560,8 +557,8 @@
             } catch (e) {}
         }
 
-        // Set to 4 so the game ends after finding all 4 correct K items
-        let remainingKs = 4;
+        // Set to 3 so the game ends after finding 3 correct ones
+        let remainingKs = 3;
 
         function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
@@ -573,7 +570,6 @@
                 remainingKs--;
 
                 if (remainingKs === 0) {
-                    // Stop background music and trigger victory fanfare
                     if (bgMusicInterval) clearInterval(bgMusicInterval);
                     playSound('victory');
 
