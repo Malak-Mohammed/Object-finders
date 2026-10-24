@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Find the Hidden Fours - Grade 1</title>
+    <title>Find the Hidden Letter K - Grade 1</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hidden Fours">
+    <meta name="apple-mobile-web-app-title" content="Hidden Letter K">
 
     <!-- Include Three.js for 3D world rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -282,15 +282,15 @@
         <div class="victory-card">
             <div class="victory-stars">⭐⭐🌟⭐⭐</div>
             <h2>AMAZING!</h2>
-            <p>You found the hidden fours!</p>
+            <p>You found all the hidden Letter K's!</p>
             <button id="restartBtn" onclick="location.reload()">Play Again</button>
         </div>
     </div>
 
     <div id="setupScreen">
         <div class="setup-card">
-            <div class="badge-icon">⭐🔢⭐</div>
-            <h1>Number 4 Scavenger Hunt</h1>
+            <div class="badge-icon">⭐🔤⭐</div>
+            <h1>Letter K Scavenger Hunt</h1>
             <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to start your adventure!</p>
             <button id="setupBtn" onclick="startExperience()">Start Game</button>
             <div class="teacher-credit">By Teacher Nada</div>
@@ -395,17 +395,20 @@
 
             const textureLoader = new THREE.TextureLoader();
             
+            // Correct objects (Letter K images)
             const correctPositions = [
-                { x: 0,   y: 0.2,  z: -3.5, file: 'images/four3.png' },
-                { x: 3.5, y: -0.1, z: -2.2, file: 'images/four4.png' },
-                { x: -3.5,y: 0.4,  z: -2.2, file: 'images/four5.png' },
-                { x: 0,   y: 0.2,  z: 3.5,  file: 'images/four6.png' }
+                { x: 0,    y: 0.2,  z: -3.5, file: 'images/k1.png' },
+                { x: 3.5,  y: -0.1, z: -2.2, file: 'images/k2.png' },
+                { x: -3.5, y: 0.4,  z: -2.2, file: 'images/k3.png' },
+                { x: 0,    y: 0.2,  z: 3.5,  file: 'images/k4.png' }
             ];
 
+            // Wrong objects
             const wrongPositions = [
-                { x: -1.8, y: -0.5, z: -3.0, file: 'images/wrong1.png' },
-                { x: 1.8,  y: 0.8,  z: -2.8, file: 'images/wrong2.png' },
-                { x: 0,    y: -1.2, z:  2.0, file: 'images/wrong3.png' }
+                { x: -1.8, y: -0.5, z: -3.0, file: 'images/wr1.png' },
+                { x: 1.8,  y: 0.8,  z: -2.8, file: 'images/wr2.png' },
+                { x: 0,    y: -1.2, z: 2.0,  file: 'images/wr3.png' },
+                { x: 2.2,  y: -0.8, z: 2.5,  file: 'images/wr4.png' }
             ];
 
             correctPositions.forEach((pos, index) => {
@@ -557,8 +560,8 @@
             } catch (e) {}
         }
 
-        // Set to 3 so the game ends after finding 3 correct ones
-        let remainingFours = 3;
+        // Set to 4 so the game ends after finding all 4 correct K items
+        let remainingKs = 4;
 
         function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
@@ -567,10 +570,10 @@
                 scene.remove(object);
                 interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
-                remainingFours--;
+                remainingKs--;
 
-                if (remainingFours === 0) {
-                    // Stop background music and trigger epic victory fanfare & celebration
+                if (remainingKs === 0) {
+                    // Stop background music and trigger victory fanfare
                     if (bgMusicInterval) clearInterval(bgMusicInterval);
                     playSound('victory');
 
