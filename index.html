@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Find the Hidden Letter K - Grade 1</title>
+    <title>Find the Hidden Letter R - Grade 1</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hidden Letter K">
+    <meta name="apple-mobile-web-app-title" content="Hidden Letter R">
 
     <!-- Include Three.js for 3D world rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -282,7 +282,7 @@
         <div class="victory-card">
             <div class="victory-stars">⭐⭐🌟⭐⭐</div>
             <h2>AMAZING!</h2>
-            <p>You found all 3 hidden Letter K's!</p>
+            <p>You found all 3 hidden Letter R's!</p>
             <button id="restartBtn" onclick="location.reload()">Play Again</button>
         </div>
     </div>
@@ -290,7 +290,7 @@
     <div id="setupScreen">
         <div class="setup-card">
             <div class="badge-icon">⭐🔤⭐</div>
-            <h1>Letter K Scavenger Hunt</h1>
+            <h1>Letter R Scavenger Hunt</h1>
             <p>Hold your phone in <b>landscape mode</b>, stand in the center of the room, and tap below to start your adventure!</p>
             <button id="setupBtn" onclick="startExperience()">Start Game</button>
             <div class="teacher-credit">By Teacher Nada</div>
@@ -395,11 +395,11 @@
 
             const textureLoader = new THREE.TextureLoader();
             
-            // Exactly 3 correct objects (k1.png, k2.png, k3.png)
+            // Exactly 3 correct objects (r1.png, r2.png, r3.png)
             const correctPositions = [
-                { x: 0,    y: 0.2,  z: -3.5, file: 'images/k1.png' },
-                { x: 3.5,  y: -0.1, z: -2.2, file: 'images/k2.png' },
-                { x: -3.5, y: 0.4,  z: -2.2, file: 'images/k3.png' }
+                { x: 0,    y: 0.2,  z: -3.5, file: 'images/r1.png' },
+                { x: 3.5,  y: -0.1, z: -2.2, file: 'images/r2.png' },
+                { x: -3.5, y: 0.4,  z: -2.2, file: 'images/r3.png' }
             ];
 
             // 3 wrong objects (wr1.png, wr2.png, wr3.png)
@@ -558,7 +558,7 @@
         }
 
         // Set to 3 so the game ends after finding 3 correct ones
-        let remainingKs = 3;
+        let remainingRs = 3;
 
         function handleTap(object) {
             const popup = document.getElementById('feedbackPopup');
@@ -567,9 +567,9 @@
                 scene.remove(object);
                 interactiveObjects = interactiveObjects.filter(obj => obj !== object);
 
-                remainingKs--;
+                remainingRs--;
 
-                if (remainingKs === 0) {
+                if (remainingRs === 0) {
                     if (bgMusicInterval) clearInterval(bgMusicInterval);
                     playSound('victory');
 
